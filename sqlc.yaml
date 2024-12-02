@@ -1,0 +1,16 @@
+version: "2"
+sql:
+  - engine: "postgresql"
+    # queries refers to where our manually created queries located
+    # queries: "query.sql" # will refer a file
+    # or
+    queries: "db/query/users" # will refer a directory
+    # schema refers to where our schema definitions located
+    # schema: "schema.sql" # will refer a file
+    # or
+    schema: "db/migrations" # will refer a directory
+    gen:
+      go:
+        package: "db"
+        sql_package: "pgx/v5"
+        out: "db/sqlc"
