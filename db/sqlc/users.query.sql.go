@@ -11,6 +11,100 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createUser = `-- name: CreateUser :exec
+INSERT INTO users (
+    id, 
+    username, 
+    email, 
+    phone, 
+    status, 
+    preference_low_channel, 
+    preference_medium_channel, 
+    preference_high_channel
+) 
+VALUES (
+    $1, $2, $3, $4, $5, $6, $7, $8
+)
+`
+
+type CreateUserParams struct {
+	ID                      pgtype.UUID
+	Username                string
+	Email                   string
+	Phone                   pgtype.Text
+	Status                  string
+	PreferenceLowChannel    string
+	PreferenceMediumChannel string
+	PreferenceHighChannel   string
+}
+
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
+	_, err := q.db.Exec(ctx, createUser,
+		arg.ID,
+		arg.Username,
+		arg.Email,
+		arg.Phone,
+		arg.Status,
+		arg.PreferenceLowChannel,
+		arg.PreferenceMediumChannel,
+		arg.PreferenceHighChannel,
+	)
+	return err
+}
+
+const deleteUserByID = `-- name: DeleteUserByID :exec
+DELETE FROM users 
+WHERE id = $1
+`
+
+func (q *Queries) DeleteUserByID(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteUserByID, id)
+	return err
+}
+
+const getAllUsers = `-- name: GetAllUsers :many
+SELECT 
+    id, 
+    username, 
+    email, 
+    phone, 
+    status, 
+    preference_low_channel, 
+    preference_medium_channel, 
+    preference_high_channel
+FROM 
+    users
+`
+
+func (q *Queries) GetAllUsers(ctx context.Context) ([]User, error) {
+	rows, err := q.db.Query(ctx, getAllUsers)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []User
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.Username,
+			&i.Email,
+			&i.Phone,
+			&i.Status,
+			&i.PreferenceLowChannel,
+			&i.PreferenceMediumChannel,
+			&i.PreferenceHighChannel,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getUserByID = `-- name: GetUserByID :one
 SELECT 
     id, 
