@@ -1,8 +1,10 @@
 package api
 
 import (
-	"net/http"
+	"fmt"
+	"os"
 
+	"github.com/MRD1920/Notification-System/api/controllers"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -12,26 +14,30 @@ type Server struct {
 	db        *pgxpool.Pool
 }
 
-func NewServer(db *pgxpool.Pool) *Server {
-	ginServer := gin.Default()
-	server := &Server{
-		GinEngine: ginServer,
-		db:        db,
-	}
-	return server
-}
-func (s *Server) StartServer(port string) {
+func NewServer() {
 
-	s.GinEngine.GET("/ping", func(c *gin.Context) {
+	app := &Server{
+		GinEngine: gin.Default(),
+	}
+	app.GinEngine.GET("/ping", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"message": "pong",
 		})
 	})
-
-	s.GinEngine.GET("/health", func(ctx *gin.Context) {
-		//I want to just send the response 200
-		ctx.JSON(http.StatusOK, gin.H{})
+	app.GinEngine.GET("/hello", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"message": "Hello World",
+		})
 	})
-	s.GinEngine.Run()
 
+	app.GinEngine.GET("/users", controllers.GetUsers)
+	app.GinEngine.GET("/users/get/:id", controllers.GetUser)
+	app.GinEngine.POST("/users/create", controllers.CreateUser)
+	app.GinEngine.DELETE("/users/delete/:id", controllers.DeleteUser)
+
+	app.GinEngine.POST("/notify", controllers.CreateNotification)
+
+	fmt.Println("Server is running on port: ", os.Getenv("PORT"))
+
+	app.GinEngine.Run(":" + os.Getenv("PORT"))
 }
