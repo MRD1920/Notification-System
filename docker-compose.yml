@@ -10,3 +10,13 @@ services:
       POSTGRES_DB: ${DB_NAME}
     ports:
       - "${DB_PORT}:5432"
+  # Also add a RabbitMQ service to the docker-compose.yml file:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: notifcation_system_rabbitmq
+    ports:
+      - "${RABBITMQ_PORT}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT}:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
