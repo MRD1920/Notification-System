@@ -9,14 +9,14 @@ func PublishNotification(channel *amqp091.Channel, exchange string, queueName st
 		false,     //autoDelete
 		false,     //exclusive
 		false,     //nowait
-		nil,       //args\
+		nil,       //args
 
 	)
 	if err != nil {
 		return err
 	}
 
-	channel.Publish(
+	err = channel.Publish(
 		exchange, //exchange
 		q.Name,   // **queue name is routing key**
 		false,    //mandatory
