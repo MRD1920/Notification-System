@@ -3,6 +3,7 @@ package rabbitmq
 import (
 	"encoding/json"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/MRD1920/Notification-System/api/service"
@@ -15,7 +16,7 @@ func Worker(queueName string, rateLimit *rate.Limiter, channel *amqp091.Channel)
 	msgs, err := channel.Consume(
 		queueName, //queue
 		"",        //consumer
-		false,     // auto-ack, set to false for manual ack
+		false,     //auto-ack, set to false for manual ack
 		false,     //exclusive
 		false,     //no-local
 		false,     //no-wait
@@ -77,4 +78,49 @@ func handleFailure(notification []byte) {
 // Define a rate limiter with X requests per minute
 func NewRateLimiter(requestsPerMinute int) *rate.Limiter {
 	return rate.NewLimiter(rate.Every((time.Minute)/time.Duration(requestsPerMinute)), 1)
+}
+
+// WorkerWithGoRoutineLimit limits the number of concurrent goroutines
+// The use of Goroutines and WaitGroups here is something to learn.
+// Here we have used a rate limiter to limit the number of requests per minute.
+// We have also used a channel to limit the number of concurrent goroutines.
+// This is a good way to limit the number of goroutines and prevent the system from being overloaded.
+func WorkerWithGoRoutineLimit(queueName string, rateLimit *rate.Limiter, channel *amqp091.Channel) {
+	// Set prefetch to 2
+	channel.Qos(2, 0, false)
+
+	msgs, err := channel.Consume(
+		queueName,
+		"",
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
+	failOnError(err, "Failed to register a consumer")
+
+	// Create worker pool
+	workers := make(chan struct{}, 2) // Limit concurrent goroutines
+	var wg sync.WaitGroup
+
+	for d := range msgs {
+		if rateLimit.Allow() {
+			wg.Add(1)
+			workers <- struct{}{} // Acquire worker slot
+
+			go func(delivery amqp091.Delivery) {
+				defer wg.Done()
+				defer func() { <-workers }() // Release worker slot
+
+				if processNotification(delivery.Body) {
+					delivery.Ack(false)
+				} else {
+					handleFailure(delivery.Body)
+				}
+			}(d)
+		}
+	}
+
+	wg.Wait() // Wait for all goroutines to complete
 }
